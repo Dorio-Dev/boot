@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="bizModuleExecute">
+    <select id="retrieveBizModule" resultType="com.daradat.boot.solutionization.logicTransition.model.BizModuleInfo" parameterType="com.daradat.boot.solutionization.logicTransition.model.BizModuleInfo">
+        SELECT
+               TENANT_ID
+             , BIZMODULE_ID
+             , ALT_FLAG
+             , CALL_TYPE
+             , CALL_HOST
+             , CALL_INFO
+        FROM BIZMODULE_INFO
+        WHERE
+              TENANT_ID     = #{tenantId}
+          AND BIZMODULE_ID  = #{bizModuleId}
+          AND ALT_FLAG       = #{altFlag}
+    </select>
+</mapper>

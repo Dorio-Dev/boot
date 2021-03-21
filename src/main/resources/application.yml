@@ -1,0 +1,23 @@
+spring:
+  devtools:
+    livereload:
+      enabled: true
+    restart:
+      enabled: true
+  thymeleaf:
+    cache: false
+  datasource:
+    hikari:
+      driver-class-name: net.sf.log4jdbc.sql.jdbcapi.DriverSpy
+      jdbc-url: jdbc:log4jdbc:mariadb://solutionization.chaixddwguv5.ap-northeast-2.rds.amazonaws.com:3306/solutionization
+      username: solutionTF
+      password: dlatl!00
+logging:
+  level:
+    root: info
+    sun.rmi: error
+    jdbc: debug
+    com.daradat: debug
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: on

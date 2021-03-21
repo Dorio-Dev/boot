@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="solutionization.bizRuleExecute">
+    <select id="retrieveBizRule" resultType="java.util.HashMap" parameterType="java.util.HashMap">
+        SELECT
+              A.BIZ_RULE_TYPE_CODE
+            , A.RULE_ID
+            , A.APPLY_PRIORITY
+            , A.PROCESS_TYPE
+        FROM
+              RULE001 A
+        WHERE
+                A.TENANT_ID 		    = #{tenantId}
+            AND A.BIZ_RULE_TYPE_CODE 	= #{bizRuleTypeCode}
+            AND A.USE_YN			    = 'Y'
+        ORDER BY APPLY_PRIORITY
+    </select>
+
+    <select id="retrieveBizType" resultType="java.util.HashMap" parameterType="java.util.HashMap">
+        SELECT
+              A.BIZ_RULE_TYPE_CODE
+            , A.PROCESS_RESULT_TYPE
+        FROM
+            RULE005 A
+        WHERE
+            A.BIZ_RULE_TYPE_CODE = #{bizRuleTypeCode}
+    </select>
+
+    <select id="retrieveBizRuleCondition" resultType="java.util.HashMap" parameterType="java.util.HashMap">
+        SELECT
+              A.COND_SEQ
+            , A.COND_TYPE_CODE
+            , A.COMP_ITEM_ID
+            , B.ITEM_DATA_TYPE
+            , A.COND_VALUE
+            , A.ASSIGN_YN
+        FROM
+            RULE002 A LEFT OUTER JOIN RULE003 B ON 		A.TENANT_ID		= B.TENANT_ID
+                                                    AND A.COMP_ITEM_ID	= B.COMP_ITEM_ID
+        WHERE
+                A.TENANT_ID		        = #{tenantId}
+            AND	A.RULE_ID		        = #{ruleId}
+        ORDER BY A.COND_SEQ
+    </select>
+</mapper>
