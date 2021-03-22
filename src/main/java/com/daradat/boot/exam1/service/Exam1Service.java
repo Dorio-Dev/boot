@@ -16,19 +16,10 @@ public class Exam1Service {
 
     private final BizRuleTransition bizRuleTransition;
 
-    public Map retrieveTest(){
+    public Map retrieveTest(Map param){
         Map result = new HashMap();
 
-        Map parameters = new HashMap();
-        parameters.put("tenantId", "L2100");
-        parameters.put("bizRuleTypeCode", "A002");
-
-        Map<String, Object> input = new HashMap();
-        input.put("REQ_TYPE", "C");
-        input.put("LIMIT_CD", "1500");
-
-        parameters.put("input", input);
-        result.put("Result", bizRuleTransition.execute(parameters));
+        result.put("Result", bizRuleTransition.execute(param));
 
         //result = commonDao.selectList("exam1.exam1.testsql");
         return result;

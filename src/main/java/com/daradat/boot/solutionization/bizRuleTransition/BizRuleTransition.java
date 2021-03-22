@@ -25,8 +25,6 @@ public class BizRuleTransition {
     private final LogicTransition logicTransition;
 
     public Object execute(Map parameters){
-
-
         //PROCESS_RESULT_TYPE
         Map bizType = commonDao.select("solutionization.bizRuleExecute.retrieveBizType", parameters);
         ProcessResultTypeEnum processResultType = ProcessResultTypeEnum.valueOf((String) bizType.get("PROCESS_RESULT_TYPE"));
@@ -34,16 +32,25 @@ public class BizRuleTransition {
         Object result = null;
         for(Map bizRule : bizRules){
             ProcessTypeEnum processType = ProcessTypeEnum.valueOf((String) bizRule.get("PROCESS_TYPE"));
+            parameters.put("processResultType", processResultType);
             parameters.put("ruleId", bizRule.get("RULE_ID"));
             switch (processType){
                 case VD:
-                    result = executeExpression(bizRule, parameters);
-                    if((Boolean)result && processResultType == ProcessResultTypeEnum.RI){
-                        result = bizRule.get("RULE_ID");
-                        return result;
+                    if(processResultType == ProcessResultTypeEnum.BL){
+                        result = executeExpression(bizRule, parameters);
+                        if(!(Boolean)result){
+                            return false;
+                        }
+                    }else if(processResultType == ProcessResultTypeEnum.RI){
+                        result = executeExpression(bizRule, parameters);
+                        if((Boolean)result){
+                            result = bizRule.get("RULE_ID");
+                            return result;
+                        }
                     }
                     break;
                 case CL:
+                case AS:
                     result = executeExpression(bizRule, parameters);
                     break;
                 case MD:
@@ -52,6 +59,7 @@ public class BizRuleTransition {
                 case RS:
                     result = replaceSentence(bizRule, parameters);
                     break;
+
             }
         }
 
@@ -88,7 +96,7 @@ public class BizRuleTransition {
         Map input = (Map)parameters.get("input");
 
         for(Map bizRuleCondition : bizRuleConditions){
-            if(bizRuleCondition.get("COND_TYPE_CODE") != null) {
+            if(bizRuleCondition.get("COND_TYPE_CODE") != null && !"".equals(bizRuleCondition.get("COND_TYPE_CODE"))) {
                 ConditionTypeEnum conditionTypeEnum = ConditionTypeEnum.valueOf((String) bizRuleCondition.get("COND_TYPE_CODE"));
                 switch (conditionTypeEnum) {
                     case AN: //AND
@@ -134,12 +142,19 @@ public class BizRuleTransition {
                         expression.append(" /");
                         break;
                     case NN: // not null
+                        expression.append(" != 'null'");
                         break;
                     case NU: // is null
+                        expression.append(" == 'null'");
+                        break;
+                    case AS:
+                        expression.append(" <-");
                         break;
                 }
             }else if(bizRuleCondition.get("COMP_ITEM_ID") != null && !"".equals(bizRuleCondition.get("COMP_ITEM_ID"))){
-                if("String".equalsIgnoreCase((String) bizRuleCondition.get("ITEM_DATA_TYPE"))){
+                if("Y".equals(bizRuleCondition.get("ASSIGN_YN"))) {
+                    expression.append(bizRuleCondition.get("COMP_ITEM_ID"));
+                }else if("String".equalsIgnoreCase((String) bizRuleCondition.get("ITEM_DATA_TYPE"))){
                     expression.append(" '").append(input.get(bizRuleCondition.get("COMP_ITEM_ID"))).append("'");;
                 }else{
                     expression.append(" ").append(input.get(bizRuleCondition.get("COMP_ITEM_ID")));;
@@ -165,97 +180,22 @@ public class BizRuleTransition {
         System.out.println("expression : " +expression.toString());
         Object result = null;
         try {
-            result = scriptEngine.eval(expression.toString());
-            System.out.println("result : " +result);
+            if(parameters.get("processResultType") == ProcessResultTypeEnum.AS){
+                result = new HashMap<>();
+                String[] expressions = expression.toString().split("<-|&&");
+
+                for(int i=0; i< expressions.length; i+=2){
+                    ((Map)result).put(StringUtils.trim(expressions[i]), scriptEngine.eval(StringUtils.trim(expressions[i+1])));
+                }
+            }else {
+                result = scriptEngine.eval(expression.toString());
+            }
+            System.out.println("result : " + result);
             return result;
         } catch (ScriptException e) {
             e.printStackTrace();
         }
 
         return result;
-    }
-    public static void temp() throws ScriptException {
-        /*
-            test input param 세팅
-         */
-        Map<String, Object> inp = new HashMap<>();
-        inp.put("REQ_TYPE", "B");
-        inp.put("LIMIT_CD", "2500");
-        //TODO RuleId 필요.
-
-        /*
-            Test Record 생성 -> Rule ID를 가지고 DB에서 조회해오는 Rule 조건 정보
-         */
-        List<Map> dataset = new ArrayList<>();
-        Map<String, Object> row = new HashMap<>();
-
-        row.put("seq", 1);
-        row.put("logicalOperator", null);
-        row.put("startBracket", true);
-        row.put("condType", "String");
-        row.put("condCd", "REQ_TYPE");
-        row.put("condOperator", "==");
-        row.put("condValue", "B");
-        row.put("endBracket", false);
-        dataset.add(row);
-        row = new HashMap<>();
-        row.put("seq", 2);
-        row.put("logicalOperator", "AND");
-        row.put("startBracket", false);
-        row.put("condType", "int");
-        row.put("condCd", "LIMIT_CD");
-        row.put("condOperator", ">");
-        row.put("condValue", "2000");
-        row.put("endBracket", true);
-        dataset.add(row);
-
-
-        /*
-            Rule 생성
-         */
-        StringBuilder rule = new StringBuilder();
-
-        for(Map r : dataset){
-            if(r.get("logicalOperator") != null){
-                switch ((String)r.get("logicalOperator")){
-                    case "AND":
-                        rule.append(" &&");
-                        break;
-                    case "OR":
-                        rule.append(" ||");
-                        break;
-                }
-            }
-            if((boolean)r.get("startBracket")){
-                rule.append(" (");
-            }
-
-            if("String".equalsIgnoreCase((String) r.get("condType"))){
-                rule.append(" '").append(inp.get(r.get("condCd"))).append("'");
-            }else if("int".equalsIgnoreCase((String) r.get("condType"))){
-                rule.append(" ").append(inp.get(r.get("condCd")));
-            }
-
-            rule.append(" ").append(r.get("condOperator"));
-            if("String".equalsIgnoreCase((String) r.get("condType"))){
-                rule.append(" '").append(r.get("condValue")).append("'");
-            }else if("int".equalsIgnoreCase((String) r.get("condType"))){
-                rule.append(" ").append(r.get("condValue"));
-            }
-
-            if((boolean)r.get("endBracket")){
-                rule.append(" )");
-            }
-        }
-
-
-        ScriptEngineManager scriptEngineManager = new ScriptEngineManager();
-        ScriptEngine scriptEngine = scriptEngineManager.getEngineByName("js");
-
-        System.out.println("rule : " +rule.toString());
-        Object result =  scriptEngine.eval(rule.toString());
-        System.out.println("result : " +result);
-
-        //TODO return result
     }
 }

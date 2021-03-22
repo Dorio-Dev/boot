@@ -5,4 +5,5 @@ public enum ProcessTypeEnum {
     ,CL //Calculate
     ,MD //Execute Module
     ,RS //Replace Sentence
+    ,AS //Assign
 }

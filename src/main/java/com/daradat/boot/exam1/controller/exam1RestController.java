@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletRequest;
@@ -25,12 +26,12 @@ public class exam1RestController {
         return "Done";
     }
 
-    @GetMapping("ajaxTest")
-    public Map ajaxTestRest(HttpServletRequest request){
+    @PostMapping("ajaxTest")
+    public Map ajaxTestRest(HttpServletRequest request, @RequestBody Map param){
         Map result = new HashMap();
         //result.put("One", "1");
 
-        result = exam1Service.retrieveTest();
+        result = exam1Service.retrieveTest(param);
         return result;
     }
 

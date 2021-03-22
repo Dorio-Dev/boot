@@ -17,4 +17,5 @@ public enum ConditionTypeEnum {
     ,GT // >
     ,LE // <=
     ,GE // >=
+    ,AS // <- Assign
 }
