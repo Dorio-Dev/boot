@@ -12,6 +12,7 @@ import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 import java.text.DateFormat;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
@@ -23,7 +24,7 @@ public class BizRuleTransition {
 
     private final LogicTransition logicTransition;
 
-    public Object execute(Map parameters){
+    public Object execute(Map parameters) throws ParseException {
         //PROCESS_RESULT_TYPE
         Map bizType = commonDao.select("solutionization.bizRuleExecute.retrieveBizType", parameters);
         ProcessResultTypeEnum processResultType = ProcessResultTypeEnum.valueOf((String) bizType.get("PROCESS_RESULT_TYPE"));
@@ -85,27 +86,27 @@ public class BizRuleTransition {
         return logicTransition.execute((String) parameters.get("tenantId"), moduleInfo[0], moduleInfo[1], parameters);
     }
 
-    private Object executeExpression(Map bizRule, Map parameters){
+    private Object executeExpression(Map bizRule, Map parameters) throws ParseException {
         List<Map> bizRuleConditions = commonDao.selectList("solutionization.bizRuleExecute.retrieveBizRuleCondition", parameters);
         /*
             산술식 생성
          */
         StringBuilder expression = new StringBuilder();
 
+        /*
+        DATE TYPE 계산 위한 변수 세팅
+         */
         Map input = (Map)parameters.get("input");
         Map<String, DateFormat> dateFormatMap = new HashMap<>();
         dateFormatMap.put("DY", new SimpleDateFormat("yyyy"));
         dateFormatMap.put("DYM", new SimpleDateFormat("yyyyMM"));
         dateFormatMap.put("DYMD", new SimpleDateFormat("yyyyMMdd"));
-
         Boolean dateAsYn = false;
         Calendar currentCalendar = Calendar.getInstance();
         Date currentDate = null;
         DateFormat currentDateFormat = null;
+        byte addOperation = 1;
 
-//        Date date = null;
-//        date = df.parse("2019-07-04T12:30:30+0530");
-        //Map<String, D>
 
         for(Map bizRuleCondition : bizRuleConditions){
             if(bizRuleCondition.get("COND_TYPE_CODE") != null && !"".equals(bizRuleCondition.get("COND_TYPE_CODE"))) {
@@ -145,6 +146,9 @@ public class BizRuleTransition {
                         expression.append(" +");
                         break;
                     case MN: // -
+                        if(dateAsYn){
+                            addOperation = -1;
+                        }
                         expression.append(" -");
                         break;
                     case MP: // *
@@ -166,13 +170,13 @@ public class BizRuleTransition {
             }else if(bizRuleCondition.get("COMP_ITEM_ID") != null && !"".equals(bizRuleCondition.get("COMP_ITEM_ID"))){
                 //Assign 할 대상이 Date type(DY, DYM, DYMD) 일때 날짜 계산 처리를 위한 date 변수 세팅
                 if(dateAsYn){
-
+                    currentDate = currentDateFormat.parse((String) input.get(bizRuleCondition.get("COMP_ITEM_ID")));
+                    currentCalendar.setTime(currentDate);
                 }
                 if("DY".startsWith((String) bizRuleCondition.get("ITEM_DATA_TYPE")) && "Y".equals(bizRuleCondition.get("ASSIGN_YN"))){
+                    //Assign유형 중 date 타입이면 날짜 계산을 위한 DateFormat 세팅
                     dateAsYn = true;
                     currentDateFormat =dateFormatMap.get(bizRuleCondition.get("ITEM_DATA_TYPE"));
-
-
                 }
                 if("Y".equals(bizRuleCondition.get("ASSIGN_YN"))) {
                     //type.put(bizRuleCondition.get("COMP_ITEM_ID"), bizRuleCondition.get("ITEM_DATA_TYPE"));
@@ -180,7 +184,13 @@ public class BizRuleTransition {
                 }else if("String".equalsIgnoreCase((String) bizRuleCondition.get("ITEM_DATA_TYPE"))){
                     expression.append(" '").append(input.get(bizRuleCondition.get("COMP_ITEM_ID"))).append("'");;
                 }else if(dateAsYn && "DY".startsWith((String) bizRuleCondition.get("ITEM_DATA_TYPE"))) {
-                    expression.append(" ").append(input.get(bizRuleCondition.get("COMP_ITEM_ID")));;
+                    if("yyyy".equals(((SimpleDateFormat)currentDateFormat).toPattern())){
+                        currentCalendar.add(Calendar.YEAR, (int)input.get(bizRuleCondition.get("COMP_ITEM_ID")) * addOperation);
+                    }else if("yyyyMM".equals(((SimpleDateFormat)currentDateFormat).toPattern())){
+                        currentCalendar.add(Calendar.MONTH, (int)input.get(bizRuleCondition.get("COMP_ITEM_ID")) * addOperation);
+                    }else if("yyyyMMdd".equals(((SimpleDateFormat)currentDateFormat).toPattern())){
+                        currentCalendar.add(Calendar.DATE, (int)input.get(bizRuleCondition.get("COMP_ITEM_ID")) * addOperation);
+                    }
                 }else {
                     expression.append(" ").append(input.get(bizRuleCondition.get("COMP_ITEM_ID")));;
                 }
@@ -190,7 +200,17 @@ public class BizRuleTransition {
                     isNumeric = true;
                 }
                 if(isNumeric){
-                    expression.append(" ").append((String)bizRuleCondition.get("COND_VALUE"));
+                    if(dateAsYn) {
+                        if("yyyy".equals(((SimpleDateFormat)currentDateFormat).toPattern())){
+                            currentCalendar.add(Calendar.YEAR, (int)bizRuleCondition.get("COND_VALUE") * addOperation);
+                        }else if("yyyyMM".equals(((SimpleDateFormat)currentDateFormat).toPattern())){
+                            currentCalendar.add(Calendar.MONTH, (int)bizRuleCondition.get("COND_VALUE") * addOperation);
+                        }else if("yyyyMMdd".equals(((SimpleDateFormat)currentDateFormat).toPattern())){
+                            currentCalendar.add(Calendar.DATE, (int)bizRuleCondition.get("COND_VALUE") * addOperation);
+                        }
+                    }else {
+                        expression.append(" ").append((String)bizRuleCondition.get("COND_VALUE"));
+                    }
                 }else{
                     expression.append(" '").append((String)bizRuleCondition.get("COND_VALUE")).append("'");
                 }
