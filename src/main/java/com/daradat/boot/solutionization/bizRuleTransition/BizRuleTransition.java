@@ -11,10 +11,9 @@ import org.springframework.stereotype.Service;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -77,7 +76,7 @@ public class BizRuleTransition {
 
     private Object executeModule(Map bizRule, Map parameters){
         /*
-            문구 치환
+            동적 모듈 호출 서비스 사용하여 모듈 호출하고 결과 리턴
          */
         Map bizRuleConditions = commonDao.select("solutionization.bizRuleExecute.retrieveBizRuleCondition", parameters);
         String[] moduleInfo = ((String) bizRuleConditions.get("COND_VALUE")).split(";");
@@ -94,6 +93,19 @@ public class BizRuleTransition {
         StringBuilder expression = new StringBuilder();
 
         Map input = (Map)parameters.get("input");
+        Map<String, DateFormat> dateFormatMap = new HashMap<>();
+        dateFormatMap.put("DY", new SimpleDateFormat("yyyy"));
+        dateFormatMap.put("DYM", new SimpleDateFormat("yyyyMM"));
+        dateFormatMap.put("DYMD", new SimpleDateFormat("yyyyMMdd"));
+
+        Boolean dateAsYn = false;
+        Calendar currentCalendar = Calendar.getInstance();
+        Date currentDate = null;
+        DateFormat currentDateFormat = null;
+
+//        Date date = null;
+//        date = df.parse("2019-07-04T12:30:30+0530");
+        //Map<String, D>
 
         for(Map bizRuleCondition : bizRuleConditions){
             if(bizRuleCondition.get("COND_TYPE_CODE") != null && !"".equals(bizRuleCondition.get("COND_TYPE_CODE"))) {
@@ -147,16 +159,29 @@ public class BizRuleTransition {
                     case NU: // is null
                         expression.append(" == 'null'");
                         break;
-                    case AS:
+                    case AS: //Assign
                         expression.append(" <-");
                         break;
                 }
             }else if(bizRuleCondition.get("COMP_ITEM_ID") != null && !"".equals(bizRuleCondition.get("COMP_ITEM_ID"))){
+                //Assign 할 대상이 Date type(DY, DYM, DYMD) 일때 날짜 계산 처리를 위한 date 변수 세팅
+                if(dateAsYn){
+
+                }
+                if("DY".startsWith((String) bizRuleCondition.get("ITEM_DATA_TYPE")) && "Y".equals(bizRuleCondition.get("ASSIGN_YN"))){
+                    dateAsYn = true;
+                    currentDateFormat =dateFormatMap.get(bizRuleCondition.get("ITEM_DATA_TYPE"));
+
+
+                }
                 if("Y".equals(bizRuleCondition.get("ASSIGN_YN"))) {
+                    //type.put(bizRuleCondition.get("COMP_ITEM_ID"), bizRuleCondition.get("ITEM_DATA_TYPE"));
                     expression.append(bizRuleCondition.get("COMP_ITEM_ID"));
                 }else if("String".equalsIgnoreCase((String) bizRuleCondition.get("ITEM_DATA_TYPE"))){
                     expression.append(" '").append(input.get(bizRuleCondition.get("COMP_ITEM_ID"))).append("'");;
-                }else{
+                }else if(dateAsYn && "DY".startsWith((String) bizRuleCondition.get("ITEM_DATA_TYPE"))) {
+                    expression.append(" ").append(input.get(bizRuleCondition.get("COMP_ITEM_ID")));;
+                }else {
                     expression.append(" ").append(input.get(bizRuleCondition.get("COMP_ITEM_ID")));;
                 }
             }else if(bizRuleCondition.get("COND_VALUE") != null && !"".equals(bizRuleCondition.get("COND_VALUE"))){
@@ -185,6 +210,7 @@ public class BizRuleTransition {
                 String[] expressions = expression.toString().split("<-|&&");
 
                 for(int i=0; i< expressions.length; i+=2){
+                    //TODO: 날짜 계산 로직 추가 필요
                     ((Map)result).put(StringUtils.trim(expressions[i]), scriptEngine.eval(StringUtils.trim(expressions[i+1])));
                 }
             }else {

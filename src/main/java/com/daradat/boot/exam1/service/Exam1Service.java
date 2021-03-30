@@ -21,7 +21,6 @@ public class Exam1Service {
 
         result.put("Result", bizRuleTransition.execute(param));
 
-        //result = commonDao.selectList("exam1.exam1.testsql");
         return result;
     }
 }
