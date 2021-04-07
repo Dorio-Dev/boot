@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletRequest;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -27,7 +28,7 @@ public class exam1RestController {
     }
 
     @PostMapping("ajaxTest")
-    public Map ajaxTestRest(HttpServletRequest request, @RequestBody Map param){
+    public Map ajaxTestRest(HttpServletRequest request, @RequestBody Map param) throws ParseException {
         Map result = new HashMap();
         //result.put("One", "1");
 

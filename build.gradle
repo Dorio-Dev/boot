@@ -57,4 +57,10 @@ test {
     useJUnitPlatform()
 }
 
+bootJar{
+    archivesBaseName = 'boot'
+    archiveFileName = 'boot.jar'
+    archiveVersion = "0.0.1"
+}
+
 apply plugin: 'idea'

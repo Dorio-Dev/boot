@@ -5,6 +5,7 @@ import com.daradat.boot.solutionization.bizRuleTransition.BizRuleTransition;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.text.ParseException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -16,7 +17,7 @@ public class Exam1Service {
 
     private final BizRuleTransition bizRuleTransition;
 
-    public Map retrieveTest(Map param){
+    public Map retrieveTest(Map param) throws ParseException {
         Map result = new HashMap();
 
         result.put("Result", bizRuleTransition.execute(param));
